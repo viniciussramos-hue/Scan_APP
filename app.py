@@ -7,7 +7,54 @@ from PIL import Image
 
 # Configuração da página
 st.set_page_config(
-    page_title="Scanner para SharePoint",
+    page_title="Scanner para SharePoint",import streamlit as st
+import os
+from datetime import datetime
+from PIL import Image
+
+# Configuração da pasta de destino (o seu caminho do SharePoint/OneDrive aqui)
+SAVE_DIR = "documentos_escaneados"
+if not os.path.exists(SAVE_DIR):
+    os.makedirs(SAVE_DIR)
+
+st.set_page_config(page_title="Scanner Móvel para PC", page_icon="📱")
+
+st.title("📱 Scanner Móvel p/ Computador")
+
+# 1. Captura (Funciona perfeitamente no celular)
+st.subheader("Capturar Documento")
+img_file = st.camera_input("Use a câmera do celular para escanear")
+
+if img_file is not None:
+    # Processa e salva automaticamente no diretório do PC
+    img = Image.open(img_file)
+    nome_arq = f"scan_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
+    caminho_final = os.path.join(SAVE_DIR, nome_arq)
+    
+    img.convert("RGB").save(caminho_final, "JPEG")
+    st.success(f"Foto salva no computador: {nome_arq}")
+
+# 2. Área de "Descarregamento" (Acesso no PC)
+st.markdown("---")
+st.subheader("📂 Gerenciamento de Arquivos")
+
+if os.path.exists(SAVE_DIR):
+    arquivos = [f for f in os.listdir(SAVE_DIR) if f.endswith(".jpg")]
+    
+    if arquivos:
+        st.write(f"Total de {len(arquivos)} documentos prontos para descarregar:")
+        
+        for arq in arquivos:
+            caminho_completo = os.path.join(SAVE_DIR, arq)
+            with open(caminho_completo, "rb") as file:
+                st.download_button(
+                    label=f"📥 Baixar {arq}",
+                    data=file,
+                    file_name=arq,
+                    mime="image/jpeg"
+                )
+    else:
+        st.info("Nenhum documento salvo na pasta.")
     page_icon="📁",
     layout="centered",
 )
