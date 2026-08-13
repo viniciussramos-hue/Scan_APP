@@ -1,62 +1,63 @@
-from datetime import datetime
-import os
 import streamlit as st
+import os
+import cv2
+from datetime import datetime
 from PIL import Image
 
-# Configuração da página
-st.set_page_config(
-    page_title="Scanner Móvel para PC", page_icon="📱", layout="centered"
-)
-
-# Pasta onde os arquivos escaneados serão salvos no computador
+# Configuração inicial
 SAVE_DIR = "documentos_escaneados"
 if not os.path.exists(SAVE_DIR):
-  os.makedirs(SAVE_DIR)
+    os.makedirs(SAVE_DIR)
 
-st.title("📱 Scanner Móvel p/ Computador")
-st.write(
-    "Use a câmera do celular para escanear o documento. Ele será salvo"
-    " automaticamente no computador."
-)
+st.set_page_config(page_title="Scanner Centralizado", page_icon="📠")
 
-# Campo para capturar a foto (funciona perfeitamente pelo celular)
-img_file = st.camera_input("Tire a foto do documento")
+st.title("📠 Scanner Centralizado")
+st.write("Escolha o método de captura abaixo:")
 
-if img_file is not None:
-  # Abre e processa a imagem
-  img = Image.open(img_file)
+# Seleção de método
+metodo = st.radio("Selecione a câmera:", ["Webcam do Computador", "Câmera do Celular"])
 
-  # Nome padrão com data e hora
-  nome_padrao = f"scan_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-  nome_arquivo = st.text_input("Nome do arquivo:", value=nome_padrao)
+# Pasta de destino
+st.info(f"📁 Pasta destino: {os.path.abspath(SAVE_DIR)}")
 
-  if st.button("💾 Salvar no Computador", type="primary"):
-    nome_final = (
-        nome_arquivo.strip() if nome_arquivo.strip() != "" else nome_padrao
-    )
-    caminho_final = os.path.join(SAVE_DIR, f"{nome_final}.jpg")
+# --- FUNÇÃO PARA SALVAR ---
+def salvar_imagem(img, nome):
+    nome_final = nome.strip() if nome.strip() != "" else f"scan_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    caminho = os.path.join(SAVE_DIR, f"{nome_final}.jpg")
+    img.convert("RGB").save(caminho, "JPEG")
+    return caminho
 
-    # Salva na pasta do PC
-    img.convert("RGB").save(caminho_final, "JPEG")
-    st.success(f"Documento salvo com sucesso em: `{caminho_final}`")
-    st.balloons()
+# --- LÓGICA DO CELULAR ---
+if metodo == "Câmera do Celular":
+    st.subheader("Scanner Móvel")
+    img_file = st.camera_input("Tire a foto pelo celular")
+    if img_file:
+        nome = st.text_input("Nome do arquivo (Celular):")
+        if st.button("💾 Salvar Foto do Celular"):
+            caminho = salvar_imagem(Image.open(img_file), nome)
+            st.success(f"Salvo em: {caminho}")
 
-# Área de gerenciamento de arquivos salvos
+# --- LÓGICA DA WEBCAM DO PC ---
+else:
+    st.subheader("Scanner de Mesa (Webcam PC)")
+    nome_pc = st.text_input("Nome do arquivo (PC):")
+    if st.button("📸 Capturar da Webcam do PC"):
+        cap = cv2.VideoCapture(0)
+        ret, frame = cap.read()
+        cap.release()
+        
+        if ret:
+            img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+            caminho = salvar_imagem(img, nome_pc)
+            st.image(img, caption="Captura Realizada", use_column_width=True)
+            st.success(f"Salvo em: {caminho}")
+        else:
+            st.error("Não foi possível acessar a webcam do PC.")
+
+# --- GERENCIAMENTO ---
 st.markdown("---")
 st.subheader("📂 Documentos Armazenados")
-
-if os.path.exists(SAVE_DIR):
-  arquivos = [f for f in os.listdir(SAVE_DIR) if f.endswith(".jpg")]
-  if arquivos:
-    st.write(f"Total de {len(arquivos)} documento(s) salvo(s):")
-    for arq in sorted(arquivos, reverse=True):
-      caminho_completo = os.path.join(SAVE_DIR, arq)
-      with open(caminho_completo, "rb") as file:
-        st.download_button(
-            label=f"📥 Baixar {arq}",
-            data=file,
-            file_name=arq,
-            mime="image/jpeg",
-        )
-  else:
-    st.info("Nenhum documento salvo ainda.")
+arquivos = [f for f in os.listdir(SAVE_DIR) if f.endswith(".jpg")]
+for arq in sorted(arquivos, reverse=True):
+    with open(os.path.join(SAVE_DIR, arq), "rb") as file:
+        st.download_button(label=f"📥 Baixar {arq}", data=file, file_name=arq, mime="image/jpeg")
