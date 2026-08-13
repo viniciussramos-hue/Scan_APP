@@ -1,74 +1,80 @@
 from datetime import datetime
 import os
+import cv2
 import streamlit as st
 from PIL import Image
 
 # Configuração da página
 st.set_page_config(
-    page_title="Scanner de Documentos - Local",
-    page_icon="📷",
+    page_title="Scanner de Documentos - Webcam PC",
+    page_icon="📠",
     layout="centered",
 )
 
 # Pasta onde os arquivos escaneados serão salvos no computador
 SAVE_DIR = "documentos_escaneados"
 if not os.path.exists(SAVE_DIR):
-    os.makedirs(SAVE_DIR)
+  os.makedirs(SAVE_DIR)
 
-st.title("📷 Scanner para Computador")
+st.title("📠 Scanner com Câmera do PC")
 st.write(
-    "Use a câmera do seu celular para fotografar um documento físico e salvá-lo "
-    "diretamente no computador."
+    "Posicione o documento embaixo da webcam do computador e clique no botão"
+    " abaixo para digitalizar."
 )
 
-# Opção de escolha: Câmera ou Enviar arquivo existente
-opcao = st.radio(
-    "Escolha o método:", ["Tirar Foto com a Câmera", "Enviar Arquivo/Imagem"]
-)
+# Campo para nomear o arquivo antes de escanear
+nome_padrao = f"scan_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+nome_arquivo = st.text_input("Nome do arquivo a ser salvo:", value=nome_padrao)
 
-imagem_capturada = None
+# Botão para capturar a imagem da webcam do PC
+if st.button("📸 Capturar e Escanear", type="primary"):
+  # Abre a webcam do computador (0 geralmente é a webcam padrão)
+  cap = cv2.VideoCapture(0)
 
-if opcao == "Tirar Foto con a Câmera":
-    # Aciona a câmera do celular/dispositivo
-    imagem_capturada = st.camera_input("Tire a foto do documento")
-else:
-    # Permite enviar um arquivo já salvo ou PDF/foto da galeria
-    imagem_capturada = st.file_uploader(
-        "Escolha a imagem do documento", type=["png", "jpg", "jpeg"]
+  if not cap.isOpened():
+    st.error(
+        "Erro: Não foi possível acessar a câmera do computador. Verifique se"
+        " ela está conectada."
     )
+  else:
+    # Lê um frame da câmera
+    ret, frame = cap.read()
+    # Libera a câmera imediatamente após a captura
+    cap.release()
 
-# Se uma imagem foi tirada ou enviada
-if imagem_capturada is not None:
-  # Exibe a pré-visualização
-  image = Image.open(imagem_capturada)
-  st.image(image, caption="Pré-visualização do Documento", use_column_width=True)
+    if ret:
+      # Converte a imagem de BGR (OpenCV) para RGB (Pillow/Streamlit)
+      frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+      image = Image.fromarray(frame_rgb)
 
-  # Campo para nomear o arquivo antes de salvar
-  nome_padrao = f"doc_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-  nome_arquivo = st.text_input("Nome do arquivo para salvar:", value=nome_padrao)
+      # Define o caminho para salvar
+      if nome_arquivo.strip() == "":
+        nome_final = nome_padrao
+      else:
+        nome_final = nome_arquivo.strip()
 
-  if st.button("💾 Salvar no Computador", type="primary"):
-    if nome_arquivo.strip() == "":
-      st.warning("Por favor, insira um nome válido para o arquivo.")
-    else:
-      # Caminho completo do arquivo
-      caminho_completo = os.path.id = os.path.join(
-          SAVE_DIR, f"{nome_arquivo}.jpg"
+      caminho_completo = os.path.join(SAVE_DIR, f"{nome_final}.jpg")
+
+      # Salva o arquivo na pasta do computador
+      image.save(caminho_completo, "JPEG")
+
+      st.success(f"Documento escaneado e salvo com sucesso!")
+      st.info(f"Salvo em: `{caminho_completo}`")
+
+      # Mostra a imagem capturada na tela
+      st.image(
+          image, caption=f"Documento: {nome_final}.jpg", use_column_width=True
       )
-
-      # Salva a imagem convertida em RGB na pasta local
-      image.convert("RGB").save(caminho_completo, "JPEG")
-
-      st.success(f"Sucesso! Arquivo salvo em: `{caminho_completo}`")
-      st.balloons()
+    else:
+      st.error("Falha ao capturar a imagem da câmera.")
 
 # Exibir histórico recente de arquivos salvos na pasta
 st.markdown("---")
-st.subheader("📂 Documentos já salvos no PC")
+st.subheader("📂 Documentos Escaneados no PC")
 if os.path.exists(SAVE_DIR):
   arquivos = os.listdir(SAVE_DIR)
   if arquivos:
     for arq in sorted(arquivos, reverse=True):
       st.text(f"• {arq}")
   else:
-    st.info("Nenhum documento salvo ainda.")
+    st.info("Nenhum documento escaneado ainda.")
