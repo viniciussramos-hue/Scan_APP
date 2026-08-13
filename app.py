@@ -11,22 +11,6 @@ if not os.path.exists(SAVE_DIR):
 
 st.set_page_config(page_title="Scanner Centralizado", page_icon="📠")
 
-# Injeção de JavaScript para forçar a câmera traseira do celular por padrão
-st.markdown(
-    """
-    <script>
-    // Tenta encontrar o elemento de input de mídia/câmera e ajustar para a câmera traseira (environment)
-    document.addEventListener("DOMContentLoaded", function(event) {
-        const videos = document.querySelectorAll('video');
-        videos.forEach(video => {
-            // Ajusta se necessário
-        });
-    });
-    </script>
-""",
-    unsafe_allow_html=True,
-)
-
 st.title("📠 Scanner Centralizado")
 st.write("Escolha o método de captura abaixo:")
 
@@ -54,15 +38,11 @@ def salvar_imagem(img, nome):
 # --- LÓGICA DO CELULAR ---
 if metodo == "Câmera do Celular":
   st.subheader("Scanner Móvel")
-
-  # Nota: Em muitos navegadores modernos de celulares (Chrome/Safari),
-  # o st.camera_input por padrão já tenta abrir a câmera traseira principal (environment)
-  # para digitalização de documentos quando acessado via HTTPS ou IP local.
   img_file = st.camera_input("Tire a foto pelo celular")
 
   if img_file:
     nome = st.text_input("Nome do arquivo (Celular):")
-    if st.button("💾 Salvar Foto do Celular"):
+    if st.button("💾 Salvar Foto do Celular", key="btn_celular"):
       caminho = salvar_imagem(Image.open(img_file), nome)
       st.success(f"Salvo em: {caminho}")
 
@@ -70,7 +50,7 @@ if metodo == "Câmera do Celular":
 else:
   st.subheader("Scanner de Mesa (Webcam PC)")
   nome_pc = st.text_input("Nome do arquivo (PC):")
-  if st.button("📸 Capturar da Webcam do PC"):
+  if st.button("📸 Capturar da Webcam do PC", key="btn_pc"):
     cap = cv2.VideoCapture(0)
     ret, frame = cap.read()
     cap.release()
@@ -83,13 +63,42 @@ else:
     else:
       st.error("Não foi possível acessar a webcam do PC.")
 
-# --- GERENCIAMENTO ---
+# --- GERENCIAMENTO E EXCLUSÃO DE ARQUIVOS ---
 st.markdown("---")
-st.subheader("📂 Documentos Armazenados")
+st.subheader("📂 Documentos Armazenados e Gerenciamento")
+
 if os.path.exists(SAVE_DIR):
   arquivos = [f for f in os.listdir(SAVE_DIR) if f.endswith(".jpg")]
-  for arq in sorted(arquivos, reverse=True):
-    with open(os.path.join(SAVE_DIR, arq), "rb") as file:
-      st.download_button(
-          label=f"📥 Baixar {arq}", data=file, file_name=arq, mime="image/jpeg"
-      )
+
+  if arquivos:
+    st.write(f"Total de {len(arquivos)} documento(s) na pasta:")
+
+    for arq in sorted(arquivos, reverse=True):
+      caminho_completo = os.path.join(SAVE_DIR, arq)
+
+      # Cria colunas para organizar o botão de baixar e o botão de deletar lado a lado
+      col1, col2, col3 = st.columns([3, 1, 1])
+
+      with col1:
+        st.text(f"• {arq}")
+
+      with col2:
+        with open(caminho_completo, "rb") as file:
+          st.download_button(
+              label="📥 Baixar",
+              data=file,
+              file_name=arq,
+              mime="image/jpeg",
+              key=f"dl_{arq}",
+          )
+
+      with col3:
+        if st.button("🗑️ Deletar", key=f"del_{arq}"):
+          try:
+            os.remove(caminho_completo)
+            st.success(f"'{arq}' excluído com sucesso!")
+            st.rerun()  # Atualiza a página imediatamente após a exclusão
+          except Exception as e:
+            st.error(f"Erro ao deletar: {e}")
+  else:
+    st.info("Nenhum documento salvo na pasta no momento.")
