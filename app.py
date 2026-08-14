@@ -49,19 +49,41 @@ if metodo == "Câmera do Celular":
 # --- LÓGICA DA WEBCAM DO PC ---
 else:
   st.subheader("Scanner de Mesa (Webcam PC)")
-  nome_pc = st.text_input("Nome do arquivo (PC):")
-  if st.button("📸 Capturar da Webcam do PC", key="btn_pc"):
-    cap = cv2.VideoCapture(0)
-    ret, frame = cap.read()
-    cap.release()
 
-    if ret:
-      img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-      caminho = salvar_imagem(img, nome_pc)
-      st.image(img, caption="Captura Realizada", use_column_width=True)
-      st.success(f"Salvo em: {caminho}")
+  # Seletor de índice caso a webcam padrão (0) esteja ocupada ou seja outra
+  camera_id = st.selectbox(
+      "Índice da Câmera (Tente mudar se der erro):", [0, 1, 2]
+  )
+  nome_pc = st.text_input("Nome do arquivo (PC):")
+
+  if st.button("📸 Capturar da Webcam do PC", key="btn_pc"):
+    # Tenta abrir a câmera selecionada
+    cap = cv2.VideoCapture(camera_id, cv2.CAP_DSHOW)  # CAP_DSHOW acelera no Windows
+
+    if not cap.isOpened():
+      # Tenta abrir sem o DirectShow caso falhe
+      cap = cv2.VideoCapture(camera_id)
+
+    if not cap.isOpened():
+      st.error(
+          f"Erro crítico: Não foi possível abrir a câmera {camera_id}. "
+          "Verifique se ela está conectada, se nenhum outro programa (Teams,"
+          " Zoom) está usando ela, ou altere o Índice da Câmera acima."
+      )
     else:
-      st.error("Não foi possível acessar a webcam do PC.")
+      ret, frame = cap.read()
+      cap.release()  # Fecha a câmera imediatamente após a foto
+
+      if ret and frame is not None:
+        img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+        caminho = salvar_imagem(img, nome_pc)
+        st.image(img, caption="Captura Realizada", use_column_width=True)
+        st.success(f"Salvo com sucesso em: {caminho}")
+      else:
+        st.error(
+            "A câmera conectou, mas falhou ao ler o quadro de imagem (frame"
+            " vazio)."
+        )
 
 # --- GERENCIAMENTO E EXCLUSÃO DE ARQUIVOS ---
 st.markdown("---")
@@ -75,8 +97,6 @@ if os.path.exists(SAVE_DIR):
 
     for arq in sorted(arquivos, reverse=True):
       caminho_completo = os.path.join(SAVE_DIR, arq)
-
-      # Cria colunas para organizar o botão de baixar e o botão de deletar lado a lado
       col1, col2, col3 = st.columns([3, 1, 1])
 
       with col1:
@@ -97,7 +117,7 @@ if os.path.exists(SAVE_DIR):
           try:
             os.remove(caminho_completo)
             st.success(f"'{arq}' excluído com sucesso!")
-            st.rerun()  # Atualiza a página imediatamente após a exclusão
+            st.rerun()
           except Exception as e:
             st.error(f"Erro ao deletar: {e}")
   else:
