@@ -1,6 +1,5 @@
 from datetime import datetime
 import os
-import cv2
 import streamlit as st
 from PIL import Image
 
@@ -12,11 +11,11 @@ if not os.path.exists(SAVE_DIR):
 st.set_page_config(page_title="Scanner Centralizado", page_icon="📠")
 
 st.title("📠 Scanner Centralizado")
-st.write("Escolha o método de captura abaixo:")
+st.write("Escolha o método de captura e digitalize seus documentos:")
 
 # Seleção de método
 metodo = st.radio(
-    "Selecione a câmera:", ["Webcam do Computador", "Câmera do Celular"]
+    "Selecione o dispositivo:", ["Webcam do Computador", "Câmera do Celular"]
 )
 
 # Pasta de destino
@@ -35,45 +34,33 @@ def salvar_imagem(img, nome):
   return caminho
 
 
-# --- LÓGICA DO CELULAR ---
-if metodo == "Câmera do Celular":
-  st.subheader("Scanner Móvel")
-  img_file = st.camera_input("Tire a foto pelo celular")
-
-  if img_file:
-    nome = st.text_input("Nome do arquivo (Celular):")
-    if st.button("💾 Salvar Foto do Celular", key="btn_celular"):
-      caminho = salvar_imagem(Image.open(img_file), nome)
-      st.success(f"Salvo em: {caminho}")
-
 # --- LÓGICA DA WEBCAM DO PC ---
-else:
+if metodo == "Webcam do Computador":
   st.subheader("Scanner de Mesa (Webcam PC)")
-  nome_pc = st.text_input("Nome do arquivo (PC):")
+  img_pc = st.camera_input("Capture o documento pela webcam do PC", key="cam_pc")
 
-  if st.button("📸 Capturar da Webcam do PC", key="btn_pc"):
-    # Força a abertura usando o driver padrão do Windows (DirectShow)
-    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+  if img_pc is not None:
+    img = Image.open(img_pc)
+    nome_pc = st.text_input("Nome do arquivo (PC):", key="nome_pc")
 
-    if not cap.isOpened():
-      st.error(
-          "❌ Erro de Permissão ou Câmera Ocupada: O Windows bloqueou o acesso"
-          " ou a câmera está em uso por outro app."
-      )
-    else:
-      ret, frame = cap.read()
-      cap.release()
+    if st.button("💾 Salvar Foto do PC", key="btn_salvar_pc"):
+      caminho = salvar_imagem(img, nome_pc)
+      st.success(f"Documento salvo com sucesso em: `{caminho}`")
+      st.balloons()
 
-      if ret and frame is not None:
-        img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-        caminho = salvar_imagem(img, nome_pc)
-        st.image(img, caption="Captura Realizada", use_column_width=True)
-        st.success(f"Salvo com sucesso em: {caminho}")
-      else:
-        st.error(
-            "A câmera conectou, mas não conseguiu capturar o quadro de"
-            " imagem."
-        )
+# --- LÓGICA DO CELULAR ---
+else:
+  st.subheader("Scanner Móvel (Celular)")
+  img_cel = st.camera_input("Tire a foto pelo celular", key="cam_cel")
+
+  if img_cel is not None:
+    img = Image.open(img_cel)
+    nome_cel = st.text_input("Nome do arquivo (Celular):", key="nome_cel")
+
+    if st.button("💾 Salvar Foto do Celular", key="btn_salvar_cel"):
+      caminho = salvar_imagem(img, nome_cel)
+      st.success(f"Documento salvo com sucesso em: `{caminho}`")
+      st.balloons()
 
 # --- GERENCIAMENTO E EXCLUSÃO DE ARQUIVOS ---
 st.markdown("---")
