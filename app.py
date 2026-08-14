@@ -37,12 +37,14 @@ def processar_auto_doc(imagem_pil):
   return Image.fromarray(adaptativo)
 
 
-# --- CAPTURA COM SUPORTE A CÂMERA FRONTAL ---
-# Tenta forçar a câmera frontal ("user") diretamente no componente do Streamlit
+# --- CAPTURA COM SUPORTE A CÂMERA TRASEIRA ---
+# 'facing_mode="environment"' força a câmera traseira principal em smartphones
 try:
-  img_capturada = st.camera_input("Capturar imagem:", key="cam", facing_mode="user")
+  img_capturada = st.camera_input(
+      "Capturar imagem:", key="cam", facing_mode="environment"
+  )
 except TypeError:
-  # Fallback caso a versão do Streamlit seja mais antiga e não suporte o argumento facing_mode
+  # Fallback caso a versão do Streamlit seja mais antiga
   img_capturada = st.camera_input("Capturar imagem:", key="cam")
 
 if img_capturada is not None:
@@ -71,8 +73,9 @@ if img_capturada is not None:
     )
     caminho_final = os.path.join(SAVE_DIR, f"{nome_final}.jpg")
     img_final.convert("RGB").save(caminho_final, "JPEG")
+    
+    # Notificação limpa em formato de sucesso na tela
     st.success(f"Documento salvo com sucesso em: `{caminho_final}`")
-    st.balloons()
 
 # --- GERENCIAMENTO E EXCLUSÃO DE ARQUIVOS ---
 st.markdown("---")
