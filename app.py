@@ -49,30 +49,20 @@ if metodo == "Câmera do Celular":
 # --- LÓGICA DA WEBCAM DO PC ---
 else:
   st.subheader("Scanner de Mesa (Webcam PC)")
-
-  # Seletor de índice caso a webcam padrão (0) esteja ocupada ou seja outra
-  camera_id = st.selectbox(
-      "Índice da Câmera (Tente mudar se der erro):", [0, 1, 2]
-  )
   nome_pc = st.text_input("Nome do arquivo (PC):")
 
   if st.button("📸 Capturar da Webcam do PC", key="btn_pc"):
-    # Tenta abrir a câmera selecionada
-    cap = cv2.VideoCapture(camera_id, cv2.CAP_DSHOW)  # CAP_DSHOW acelera no Windows
-
-    if not cap.isOpened():
-      # Tenta abrir sem o DirectShow caso falhe
-      cap = cv2.VideoCapture(camera_id)
+    # Força a abertura usando o driver padrão do Windows (DirectShow)
+    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 
     if not cap.isOpened():
       st.error(
-          f"Erro crítico: Não foi possível abrir a câmera {camera_id}. "
-          "Verifique se ela está conectada, se nenhum outro programa (Teams,"
-          " Zoom) está usando ela, ou altere o Índice da Câmera acima."
+          "❌ Erro de Permissão ou Câmera Ocupada: O Windows bloqueou o acesso"
+          " ou a câmera está em uso por outro app."
       )
     else:
       ret, frame = cap.read()
-      cap.release()  # Fecha a câmera imediatamente após a foto
+      cap.release()
 
       if ret and frame is not None:
         img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
@@ -81,8 +71,8 @@ else:
         st.success(f"Salvo com sucesso em: {caminho}")
       else:
         st.error(
-            "A câmera conectou, mas falhou ao ler o quadro de imagem (frame"
-            " vazio)."
+            "A câmera conectou, mas não conseguiu capturar o quadro de"
+            " imagem."
         )
 
 # --- GERENCIAMENTO E EXCLUSÃO DE ARQUIVOS ---
