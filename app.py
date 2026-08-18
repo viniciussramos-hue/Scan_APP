@@ -12,30 +12,27 @@ st.set_page_config(page_title="Scanner Pro - Alta Resolução", layout="wide")
 st.title("📄 Scanner de Documentos (Alta Resolução)")
 
 st.write(
-    "Dica: Para imagens perfeitas sem perda de qualidade ao dar zoom, tire a"
-    " foto com a câmera nativa do celular e faça o upload abaixo, ou use o"
-    " seletor:"
+    "💡 **Dica:** Para fotos perfeitas e sem perda de qualidade ao dar zoom,"
+    " clique abaixo para tirar a foto com a câmera nativa do seu celular ou"
+    " fazer upload de um arquivo."
 )
 
-# Usamos 'file_uploader' aceitando imagens. No celular, ao clicar aqui, 
-# o sistema operacional pergunta se você quer "Tirar Foto" com a câmera nativa 
-# em resolução máxima ou escolher da galeria.
+# Componente de upload/captura nativa em alta resolução
 img_file = st.file_uploader(
-    "Tire uma foto ou selecione da galeria (Resolução Máxima):",
-    type=["jpg", "jpeg", "png"],
+    "Tire uma foto ou selecione o arquivo:", type=["jpg", "jpeg", "png"]
 )
 
 if img_file is not None:
   img = Image.open(img_file)
 
   st.subheader("1. Ajuste as bordas do documento:")
-  # Interface de corte interativo mantendo a resolução original
+  # Interface de corte interativo mantendo a resolução original da foto
   cropped_img = st_cropper(img, realtime_update=True, box_color="green")
 
   st.subheader("2. Pré-visualização em Alta Definição:")
   st.image(
       cropped_img,
-      caption="Documento em tamanho real (Zoom nítido)",
+      caption="Documento em tamanho real (Zoom nítido e perfeito)",
       use_container_width=True,
   )
 
@@ -44,11 +41,11 @@ if img_file is not None:
 
   if st.button("💾 Salvar na Pasta do Servidor", type="primary"):
     caminho = os.path.join(SAVE_DIR, f"{nome}.jpg")
-    # Salvando em qualidade máxima (100) sem redimensionar para baixo
+    # Salva mantendo 100% de qualidade da foto original
     cropped_img.convert("RGB").save(caminho, quality=100)
     st.success(f"Salvo com sucesso em alta definição: {caminho}")
 
-# --- GERENCIAMENTO E DOWNLOAD ---
+# --- GERENCIAMENTO E DOWNLOAD PARA O PC ---
 st.markdown("---")
 st.subheader("📂 Documentos Armazenados")
 
@@ -66,6 +63,7 @@ if os.path.exists(SAVE_DIR):
         st.text(f"• {arq}")
 
       with col2:
+        # Botão para baixar e escolher o diretório desejado no PC
         with open(caminho_completo, "rb") as file:
           st.download_button(
               label="📥 Baixar",
