@@ -1,6 +1,8 @@
 from datetime import datetime
 import os
-from PIL import Image
+import cv2
+import numpy as np
+from PIL import Image, ImageEnhance
 import streamlit as st
 from streamlit_cropper import st_cropper
 
@@ -9,30 +11,42 @@ if not os.path.exists(SAVE_DIR):
   os.makedirs(SAVE_DIR)
 
 st.set_page_config(page_title="Scanner Pro - Alta Resolução", layout="wide")
-st.title("📄 Scanner de Documentos (Alta Resolução)")
+st.title("📄 Scanner de Documentos (Câmera com Alta Resolução)")
 
-st.write(
-    "💡 **Dica:** Para fotos perfeitas e sem perda de qualidade ao dar zoom,"
-    " clique abaixo para tirar a foto com a câmera nativa do seu celular ou"
-    " fazer upload de um arquivo."
-)
-
-# Componente de upload/captura nativa em alta resolução
-img_file = st.file_uploader(
-    "Tire uma foto ou selecione o arquivo:", type=["jpg", "jpeg", "png"]
-)
+# Tenta abrir a câmera traseira do celular por padrão com foco em alta definição
+try:
+  img_file = st.camera_input(
+      "Tire a foto do documento:", key="cam", facing_mode="environment"
+  )
+except TypeError:
+  img_file = st.camera_input("Tire a foto do documento:", key="cam")
 
 if img_file is not None:
+  # Carrega a imagem original em alta qualidade
   img = Image.open(img_file)
 
-  st.subheader("1. Ajuste as bordas do documento:")
-  # Interface de corte interativo mantendo a resolução original da foto
-  cropped_img = st_cropper(img, realtime_update=True, box_color="green")
+  # --- PROCESSAMENTO DE NITIDEZ PARA EVITAR BORRÃO NO ZOOM ---
+  # Converte para OpenCV para aplicar melhoria de foco e nitidez
+  img_cv = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+
+  # Filtro de nitidez (Sharpening Kernel) para destacar os textos ao dar zoom
+  kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]])
+  img_nitida = cv2.filter2D(img_cv, -1, kernel)
+  img_processada = Image.fromarray(cv2.cvtColor(img_nitida, cv2.COLOR_BGR2RGB))
+
+  st.subheader("1. Ajuste as bordas do documento (Estilo CamScanner):")
+  # Interface de corte interativo mantendo a resolução da foto tratada
+  cropped_img = st_cropper(
+      img_processada, realtime_update=True, box_color="green"
+  )
 
   st.subheader("2. Pré-visualização em Alta Definição:")
   st.image(
       cropped_img,
-      caption="Documento em tamanho real (Zoom nítido e perfeito)",
+      caption=(
+          "Documento com foco aprimorado (Pronto para dar zoom sem perder"
+          " qualidade)"
+      ),
       use_container_width=True,
   )
 
@@ -41,8 +55,8 @@ if img_file is not None:
 
   if st.button("💾 Salvar na Pasta do Servidor", type="primary"):
     caminho = os.path.join(SAVE_DIR, f"{nome}.jpg")
-    # Salva mantendo 100% de qualidade da foto original
-    cropped_img.convert("RGB").save(caminho, quality=100)
+    # Salva com qualidade máxima (quality=100)
+    cropped_img.convert("RGB").save(caminho, "JPEG", quality=100)
     st.success(f"Salvo com sucesso em alta definição: {caminho}")
 
 # --- GERENCIAMENTO E DOWNLOAD PARA O PC ---
@@ -63,7 +77,6 @@ if os.path.exists(SAVE_DIR):
         st.text(f"• {arq}")
 
       with col2:
-        # Botão para baixar e escolher o diretório desejado no PC
         with open(caminho_completo, "rb") as file:
           st.download_button(
               label="📥 Baixar",
